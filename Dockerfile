@@ -1,18 +1,14 @@
-FROM golang:1.19.1 as builder
-
+FROM golang:1.19.2 as builder
 WORKDIR /app
+RUN go mod init hello-app
+COPY *.go ./
+COPY pages/ /app/pages
+COPY index.html ./
+RUN CGO_ENABLED=0 GOOS=linux go build -o /hello-app
 
-# 复制源代码和相关文件
-COPY src/go.mod .
-COPY src/go.sum .
-RUN go mod download
-COPY src/ .
-
-# 复制PAGES文件夹到容器中的/pages目录
-COPY pages/ .
-
-# 构建应用
-RUN go build -o myapp ./src
-
-# 设置容器启动命令
-CMD ["./myapp"]
+FROM gcr.io/distroless/base-debian11
+WORKDIR /
+COPY --from=builder /hello-app /hello-app
+ENV PORT 8080
+USER nonroot:nonroot
+CMD ["/hello-app"]
